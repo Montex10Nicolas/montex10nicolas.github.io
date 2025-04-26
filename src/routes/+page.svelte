@@ -109,7 +109,7 @@
       stroke-width="0.8px"
       fill={checking.includes(index) ? (swapping ? "blue" : "green") : "black"}
     />
-    <text y="100px" fill="white" class="text-3xl italic">{swapping}</text>
-    <text x="150px" y="100px" fill="white" class="text-3xl italic">{JSON.stringify(checking)}</text>
+    <!-- <text y="100px" fill="white" class="text-3xl italic">{swapping}</text> -->
+    <!-- <text x="150px" y="100px" fill="white" class="text-3xl italic">{JSON.stringify(checking)}</text> -->
   {/each}
 </svg>
