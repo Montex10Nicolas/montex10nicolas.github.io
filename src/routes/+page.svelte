@@ -1,11 +1,27 @@
 <script lang="ts">
-  let numElements = $state(10);
+  import { browser } from "$app/environment";
+  import { innerHeight, innerWidth } from "svelte/reactivity/window";
 
-  const randomArray = () => [...new Array(numElements)].map(() => Math.round(Math.random() * 100));
+  let numElements = $state(10);
+  let topNumber = $state(100);
+
+  let windowHeight: number | undefined = $state(0);
+  let windowWidth: number | undefined = $state(0);
+
+  let svgElement: SVGSVGElement | undefined = $state();
+  let svgHeight = $state(0);
+  let biggest = $state(0);
+
+  const randomArray = () =>
+    [...new Array(numElements)].map(() => {
+      const num = Math.max(Math.round(Math.random() * 100000000) % topNumber, 1);
+      if (biggest < num) {
+        biggest = num;
+      }
+      return num;
+    });
+
   const intialState = randomArray();
-  $effect(() => {
-    dati = randomArray();
-  });
   let dati = $state(intialState);
   let checking: [number, number] = $state([-1, -1]);
   let swapping = $state(false);
@@ -14,10 +30,26 @@
   // Duration in milliseconds
   let duration = $state(100);
 
+  $effect(function () {
+    if (browser) {
+      windowHeight = innerHeight.current;
+      windowWidth = innerWidth.current;
+
+      if (svgElement && windowHeight) {
+        svgHeight = windowHeight - svgElement.getBoundingClientRect().y;
+      }
+    }
+  });
+
+  $effect(() => {
+    dati = randomArray();
+  });
+
   function reset() {
     for (let o of timeOuts) {
       clearTimeout(o);
     }
+    timeOuts = [];
     checking = [-1, -1];
     swapping = false;
   }
@@ -46,9 +78,10 @@
                 dati[copyJ] = temp;
                 swapping = false;
 
-                setTimeout(() => {
+                const d = setTimeout(() => {
                   checking = [-1, -1];
                 }, rest * 0.5);
+                timeOuts.push(d);
               }, rest);
               timeOuts.push(c);
             }, rest * 2);
@@ -61,55 +94,65 @@
   }
 </script>
 
-<!---->
-<!-- <pre class="flex gap-4"> -->
-<!-- <code> -->
-<!--   {JSON.stringify(checking, null, 2)} -->
-<!-- </code> -->
-<!-- <code> -->
-<!--   {JSON.stringify(swapping, null, 2)} -->
-<!-- </code> -->
-<!-- </pre> -->
-<!---->
-<div class="m-2 flex gap-8">
-  <button
-    disabled={duration < 10}
-    class="cursor-pointer rounded-sm border px-4 py-1 disabled:cursor-default"
-    onclick={bubbleSort}
-  >
-    Sort
-  </button>
-  <label>
-    <p>Number of elements</p>
-    <input
-      type="range"
-      min="5"
-      max="100"
-      step="5"
-      class="cursor-pointer"
-      bind:value={numElements}
-      onchange={reset}
-    />
-    {numElements}
-  </label>
-  <label>
-    <p>Duration</p>
-    <input bind:value={duration} type="number" min="10" step="5" max="3000" />
-  </label>
-</div>
-<svg class="m-2" viewBox="0 0 1000 100">
-  {#each dati as rettangolo, index}
-    {@const width = 800 / numElements}
-    <rect
-      width="{width}px"
-      y="{100 - rettangolo}px"
-      x="{width * index + 0.1}px"
-      height={`${rettangolo}px`}
-      stroke="gold"
-      stroke-width="0.8px"
-      fill={checking.includes(index) ? (swapping ? "blue" : "green") : "black"}
-    />
-    <!-- <text y="100px" fill="white" class="text-3xl italic">{swapping}</text> -->
-    <!-- <text x="150px" y="100px" fill="white" class="text-3xl italic">{JSON.stringify(checking)}</text> -->
-  {/each}
-</svg>
+{#if browser}
+  <div class="flex w-screen grow items-center justify-around gap-8 px-4 py-2">
+    <button
+      disabled={duration < 10}
+      class="w-full cursor-pointer rounded-sm border px-4 py-1 font-bold uppercase disabled:cursor-default"
+      onclick={bubbleSort}
+    >
+      Sort
+    </button>
+    <label class="w-full">
+      <p>
+        Number of elements:
+        <bold class="font-bold">{numElements}</bold>
+      </p>
+      <input
+        type="range"
+        min="5"
+        max="100"
+        step="5"
+        class="w-full cursor-pointer"
+        bind:value={numElements}
+        onchange={reset}
+      />
+    </label>
+    <label class="w-full">
+      <p>Duration</p>
+      <input bind:value={duration} class="w-full" type="number" min="10" step="5" max="3000" />
+    </label>
+    <label class="w-full">
+      <p>Max</p>
+      <input
+        bind:value={
+          () => topNumber,
+          (v) => {
+            biggest = 0;
+            topNumber = v;
+          }
+        }
+        class="w-full"
+        type="number"
+        min="10"
+        step="5"
+        max="3000"
+      />
+    </label>
+  </div>
+  <svg bind:this={svgElement} class="m-2" viewBox="0 0 {windowWidth} {svgHeight}">
+    {#each dati as rettangolo, index}
+      {@const width = windowWidth! / numElements}
+      {@const height = (svgHeight / 100) * Math.floor((rettangolo / biggest) * 100)}
+      <rect
+        width="{width}px"
+        y="{svgHeight - height}px"
+        x="{width * index + 0.1}px"
+        height={`${height}px`}
+        stroke="gold"
+        stroke-width="0.8px"
+        fill={!checking.includes(index) ? "black" : swapping ? "blue" : "green"}
+      />
+    {/each}
+  </svg>
+{/if}
