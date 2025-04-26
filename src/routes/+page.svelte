@@ -12,7 +12,7 @@
   let timeOuts = $state<NodeJS.Timeout[]>([]);
 
   // Duration in milliseconds
-  let duration = $state(50);
+  let duration = $state(100);
 
   function reset() {
     for (let o of timeOuts) {
@@ -38,17 +38,20 @@
           checking = [copyI, copyJ];
           if (dati[i] > dati[j]) {
             const b = setTimeout(() => {
+              checking = [copyI, copyJ];
               swapping = true;
               const c = setTimeout(() => {
                 const temp = dati[copyI];
                 dati[copyI] = dati[copyJ];
                 dati[copyJ] = temp;
                 swapping = false;
-                checking = [-1, -1];
+
+                setTimeout(() => {
+                  checking = [-1, -1];
+                }, rest * 0.5);
               }, rest);
-              checking = [-1, -1];
               timeOuts.push(c);
-            }, rest);
+            }, rest * 2);
             timeOuts.push(b);
           }
         }, timeDuration * cPlus);
@@ -58,12 +61,16 @@
   }
 </script>
 
-<!-- <pre> -->
+<!---->
+<!-- <pre class="flex gap-4"> -->
 <!-- <code> -->
 <!--   {JSON.stringify(checking, null, 2)} -->
 <!-- </code> -->
+<!-- <code> -->
+<!--   {JSON.stringify(swapping, null, 2)} -->
+<!-- </code> -->
 <!-- </pre> -->
-
+<!---->
 <div class="m-2 flex gap-8">
   <button
     disabled={duration < 10}
@@ -98,9 +105,11 @@
       y="{100 - rettangolo}px"
       x="{width * index + 0.1}px"
       height={`${rettangolo}px`}
+      stroke="gold"
+      stroke-width="0.8px"
       fill={checking.includes(index) ? (swapping ? "blue" : "green") : "black"}
-      stroke="white"
     />
-    <!-- <text width="20px" y="100px" height="80px" fill="blue" class="text-sm italic">{width}</text> -->
+    <text y="100px" fill="white" class="text-3xl italic">{swapping}</text>
+    <text x="150px" y="100px" fill="white" class="text-3xl italic">{JSON.stringify(checking)}</text>
   {/each}
 </svg>
