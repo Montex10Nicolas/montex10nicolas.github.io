@@ -12,7 +12,7 @@
   let timeOuts = $state<NodeJS.Timeout[]>([]);
 
   // Duration in milliseconds
-  let duration = $state(300);
+  let duration = $state(50);
 
   function reset() {
     for (let o of timeOuts) {
@@ -25,11 +25,15 @@
   function bubbleSort() {
     reset();
     let count = 0;
+    const timeDuration = Math.floor(duration / 3) * 2;
+    const rest = (duration - timeDuration) / 2;
+
     for (let i = 0; i < dati.length - 1; i++) {
       for (let j = i + 1; j < dati.length; j++) {
         const copyI = i,
           copyJ = j;
         const cPlus = ++count;
+
         const a = setTimeout(() => {
           checking = [copyI, copyJ];
           if (dati[i] > dati[j]) {
@@ -41,12 +45,13 @@
                 dati[copyJ] = temp;
                 swapping = false;
                 checking = [-1, -1];
-              }, 300);
+              }, rest);
+              checking = [-1, -1];
               timeOuts.push(c);
-            }, 300);
+            }, rest);
             timeOuts.push(b);
           }
-        }, 800 * cPlus);
+        }, timeDuration * cPlus);
         timeOuts.push(a);
       }
     }
@@ -60,13 +65,20 @@
 <!-- </pre> -->
 
 <div class="m-2 flex gap-8">
-  <button class="cursor-pointer rounded-sm border px-4 py-1" onclick={bubbleSort}> Sort </button>
+  <button
+    disabled={duration < 10}
+    class="cursor-pointer rounded-sm border px-4 py-1 disabled:cursor-default"
+    onclick={bubbleSort}
+  >
+    Sort
+  </button>
   <label>
     <p>Number of elements</p>
     <input
       type="range"
       min="5"
       max="100"
+      step="5"
       class="cursor-pointer"
       bind:value={numElements}
       onchange={reset}
@@ -75,7 +87,7 @@
   </label>
   <label>
     <p>Duration</p>
-    <input type="text" />
+    <input bind:value={duration} type="number" min="10" step="5" max="3000" />
   </label>
 </div>
 <svg class="m-2" viewBox="0 0 1000 100">
