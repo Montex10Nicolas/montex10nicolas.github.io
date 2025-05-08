@@ -3,10 +3,11 @@
   import { index } from "drizzle-orm/gel-core";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
 
-  let numElements = $state(10);
-  let topNumber = $state(100);
+  let numElements = $state(100);
+  let topNumber = $state(1000);
+  let duration = $state(10);
 
-  let algorithm: "BUBBLE" | "MERGE" = $state("MERGE");
+  let algorithm: "BUBBLE" | "MERGE" = $state("BUBBLE");
 
   let windowHeight: number | undefined = $state(0);
   let windowWidth: number | undefined = $state(0);
@@ -43,7 +44,6 @@
   let timeOuts = $state<NodeJS.Timeout[]>([]);
 
   // Duration in milliseconds
-  let duration = $state(100);
 
   $effect(function () {
     if (browser) {
@@ -61,38 +61,53 @@
   });
 
   function visualizeQuee() {
-    const working = [...queue];
+    const working = [...queue].reverse();
 
-    console.log(working);
+    let el = working.pop();
+    let i = 0;
 
-    for (let i = 0; i < working.length; i++) {
-      let el = working[i];
-      if (el === undefined) console.log("EL UN", el);
-      if (el === undefined) return;
-
+    while (el != undefined) {
+      const el_copy = el;
+      let copyI = i;
       setTimeout(
         () => {
-          // console.log(`Doing ${i} with`, el);
-          const { operation, index_b, index_a } = el;
+          const { operation, index_b, index_a } = el_copy;
           switch (operation) {
             case "CHECKING":
               checking = [index_a, index_b];
+              // setTimeout(() => {
+              //   checking = [-1, -1];
+              // }, duration * 1.5);
               break;
             case "SWAPPING":
               swapping = true;
-              // console.log("Should be swopping ", index_a, index_b);
-              dati[index_a], (dati[index_b] = dati[index_b]), dati[index_a];
+              checking = [index_a, index_b];
+
+              setTimeout(() => {
+                const temp = dati[index_a];
+                dati[index_a] = dati[index_b];
+                dati[index_b] = temp;
+
+                setTimeout(() => {
+                  swapping = false;
+                }, duration * 0.5);
+              }, duration * 0.2);
               break;
           }
-          setTimeout(() => {
-            // console.log(`Resetting ${i} with`, el);
-            checking = [-1, -1];
-            swapping = false;
-          }, 800);
         },
-        1000 * i + 10,
+        duration * (copyI + 1),
       );
+      el = working.pop();
+      i++;
     }
+
+    setTimeout(
+      () => {
+        checking = [-1, -1];
+      },
+      duration * i + 2,
+    );
+    queue = [];
   }
 
   function reset() {
@@ -106,41 +121,36 @@
 
   function bubbleSort() {
     reset();
-    let count = 0;
-    const timeDuration = Math.floor(duration / 3) * 2;
-    const rest = (duration - timeDuration) / 2;
+    const arr = [...dati];
 
-    for (let i = 0; i < dati.length - 1; i++) {
-      for (let j = i + 1; j < dati.length; j++) {
+    for (let i = 0; i < arr.length - 1; i++) {
+      for (let j = i + 1; j < arr.length; j++) {
         const copyI = i,
           copyJ = j;
-        const cPlus = ++count;
 
-        const a = setTimeout(() => {
-          checking = [copyI, copyJ];
-          if (dati[i] > dati[j]) {
-            const b = setTimeout(() => {
-              checking = [copyI, copyJ];
-              swapping = true;
-              const c = setTimeout(() => {
-                const temp = dati[copyI];
-                dati[copyI] = dati[copyJ];
-                dati[copyJ] = temp;
-                swapping = false;
+        queue.push({
+          operation: "CHECKING",
+          index_a: copyI,
+          index_b: copyJ,
+          value_a: arr[i],
+          value_b: arr[j],
+        });
 
-                const d = setTimeout(() => {
-                  checking = [-1, -1];
-                }, rest * 0.5);
-                timeOuts.push(d);
-              }, rest);
-              timeOuts.push(c);
-            }, rest * 2);
-            timeOuts.push(b);
-          }
-        }, timeDuration * cPlus);
-        timeOuts.push(a);
+        if (arr[i] > arr[j]) {
+          const temp = arr[copyI];
+          arr[copyI] = arr[copyJ];
+          arr[copyJ] = temp;
+          queue.push({
+            operation: "SWAPPING",
+            index_a: copyI,
+            index_b: copyJ,
+            value_a: arr[i],
+            value_b: arr[j],
+          });
+        }
       }
     }
+    console.log(arr);
   }
 
   async function mergeSort(arr: number[], low: number, high: number): Promise<number[]> {
@@ -213,31 +223,9 @@
 </script>
 
 {#if browser}
-  <pre class="flex flex-col">
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each dati as _, idx}
-        <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each dati as x, idx}
-        <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-    <div class="flex min-w-8 flex-wrap justify-between">
-      <p>[</p>
-      {#each queue as x, idx}
-        <p>{idx}: {JSON.stringify(x)}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-  </pre>
-  <pre>
+  <pre class="flex justify-between px-4 pt-2">
     <code>{JSON.stringify(checking, null, 2)}</code>
+    <code>{JSON.stringify(swapping, null, 2)}</code>
   </pre>
   <div class="flex w-screen grow items-center justify-around gap-8 px-4 py-2">
     <button
@@ -247,6 +235,7 @@
         switch (algorithm) {
           case "BUBBLE":
             bubbleSort();
+            visualizeQuee();
             break;
           case "MERGE":
             await mergeSort([...dati], 0, dati.length);
@@ -313,4 +302,28 @@
       />
     {/each}
   </svg>
+
+  <pre class="flex flex-col">
+    <div class="flex min-w-8 justify-between">
+      <p>[</p>
+      {#each dati as _, idx}
+        <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p>
+      {/each}
+      <p>]</p>
+    </div>
+    <div class="flex min-w-8 justify-between">
+      <p>[</p>
+      {#each dati as x, idx}
+        <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p>
+      {/each}
+      <p>]</p>
+    </div>
+    <div class="flex min-w-8 flex-wrap justify-between">
+      <p>[</p>
+      {#each queue as x, idx}
+        <p>{idx}: {JSON.stringify(x)}{idx !== dati.length - 1 ? ", " : ""}</p>
+      {/each}
+      <p>]</p>
+    </div>
+  </pre>
 {/if}
