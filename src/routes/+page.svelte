@@ -6,7 +6,7 @@
   let topNumber = $state(500);
   let duration = $state(10);
 
-  let algorithm: "BUBBLE" | "MERGE" = $state("MERGE");
+  let algorithm: "BUBBLE" | "MERGE" | "QUICK" = $state("QUICK");
 
   let windowHeight: number | undefined = $state(0);
   let windowWidth: number | undefined = $state(0);
@@ -95,6 +95,7 @@
             case "SUBSTITUTION":
               setTimeout(() => {
                 steps++;
+                if (index_a === undefined) return;
                 dati[index_a] = value_a;
 
                 setTimeout(() => {}, duration * 0.5);
@@ -159,9 +160,7 @@
     const left = await mergeSort(arr, low, mid);
     const right = await mergeSort(arr, mid + 1, high);
 
-    const t = await merge(left, right, low, high);
-
-    return t;
+    return await merge(left, right, low, high);
   }
 
   async function merge(
@@ -233,6 +232,66 @@
 
     return temp;
   }
+
+  async function quickSort(arr: number[], low = 0, hi = arr.length - 1) {
+    if (low >= hi || low < 0) {
+      return;
+    }
+
+    let p = await partition(arr, low, hi);
+    await quickSort(arr, low, p - 1);
+    await quickSort(arr, p + 1, hi);
+  }
+
+  async function partition(arr: number[], low: number, hi: number) {
+    const pivot = arr[hi];
+    let i = low;
+
+    queue.push({
+      operation: "CHECKING",
+      index_a: hi,
+      index_b: -1,
+      value_a: pivot,
+      value_b: -1,
+    });
+
+    for (let j = low; j <= hi - 1; j++) {
+      queue.push({
+        operation: "CHECKING",
+        index_a: hi,
+        index_b: j,
+        value_a: pivot,
+        value_b: arr[j],
+      });
+
+      if (arr[j] <= pivot) {
+        queue.push({
+          operation: "SWAPPING",
+          index_a: i,
+          index_b: j,
+          value_a: arr[i],
+          value_b: arr[j],
+        });
+        const temp = arr[j];
+        arr[j] = arr[i];
+        arr[i] = temp;
+        i++;
+      }
+    }
+    const temp = arr[hi];
+    arr[hi] = arr[i];
+    arr[i] = temp;
+
+    queue.push({
+      operation: "SWAPPING",
+      index_a: hi,
+      index_b: i,
+      value_a: pivot,
+      value_b: arr[i],
+    });
+
+    return i;
+  }
 </script>
 
 {#if browser}
@@ -243,7 +302,7 @@
   <!-- </pre> -->
   <div class="flex w-screen grow items-center justify-around gap-8 px-4 py-2">
     <button
-      disabled={duration < 10}
+      disabled={duration < 10 || topNumber > 500 || topNumber <= 0}
       class="w-full cursor-pointer rounded-sm border px-4 py-1 font-bold uppercase disabled:cursor-default"
       onclick={async function () {
         switch (algorithm) {
@@ -253,7 +312,11 @@
             break;
           case "MERGE":
             original = [...dati];
-            const a = await mergeSort([...dati], 0, dati.length);
+            await mergeSort([...dati], 0, dati.length);
+            visualizeQuee();
+            break;
+          case "QUICK":
+            await quickSort([...dati]);
             visualizeQuee();
             break;
         }
@@ -293,12 +356,13 @@
         type="number"
         min="10"
         step="5"
-        max="3000"
+        max="500"
       />
     </label>
-    <select bind:value={algorithm}>
+    <select bind:value={algorithm} class="cursor-pointer [&_*]:text-yellow-600">
       <option value="BUBBLE"> Bubblesort </option>
       <option value="MERGE"> Mergesort </option>
+      <option value="QUICK"> Quicksort </option>
     </select>
     <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
   </div>
@@ -341,14 +405,13 @@
   <!--     {/each} -->
   <!--     <p>]</p> -->
   <!--   </div> -->
-  <!---->
-  <!--   <div class="flex flex-wrap align-middle"> -->
-  <!--     {#each queue as x, idx} -->
-  <!--       <p class="max-h-8 align-middle">{idx}: {JSON.stringify(x)}{idx !== queue.length - 1 -->
-  <!--           ? ", " -->
-  <!--           : ""} -->
-  <!--       </p> -->
+  <!-- <div class="flex flex-wrap align-middle"> -->
+  <!--   {#each queue as x, idx} -->
+  <!--       <p class="max-h-8 align-middle"> -->
+  <!--       {idx}: {JSON.stringify(x)}{idx !== queue.length - 1 ? ", " : ""} -->
+  <!--     </p> -->
   <!--     {/each} -->
-  <!--   </div> -->
+  <!-- </div> -->
+  <!---->
   <!-- </pre> -->
 {/if}
