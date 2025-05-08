@@ -2,7 +2,7 @@
   import { browser } from "$app/environment";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
 
-  let numElements = $state(10);
+  let numElements = $state(100);
   let topNumber = $state(500);
   let duration = $state(10);
 
