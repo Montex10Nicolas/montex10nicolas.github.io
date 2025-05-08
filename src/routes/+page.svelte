@@ -1,13 +1,12 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  import { index } from "drizzle-orm/gel-core";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
 
-  let numElements = $state(100);
-  let topNumber = $state(1000);
+  let numElements = $state(10);
+  let topNumber = $state(500);
   let duration = $state(10);
 
-  let algorithm: "BUBBLE" | "MERGE" = $state("BUBBLE");
+  let algorithm: "BUBBLE" | "MERGE" = $state("MERGE");
 
   let windowHeight: number | undefined = $state(0);
   let windowWidth: number | undefined = $state(0);
@@ -15,11 +14,10 @@
   let svgElement: SVGSVGElement | undefined = $state();
   let svgHeight = $state(0);
   let biggest = $state(0);
-
-  let completed = $state(true);
+  let steps = $state(0);
 
   interface VisualQueue {
-    operation: "CHECKING" | "SWAPPING";
+    operation: "CHECKING" | "SWAPPING" | "SUBSTITUTION";
     index_a: number;
     index_b: number;
     value_a: number;
@@ -41,7 +39,8 @@
   let dati = $state(intialState);
   let checking: [number, number] = $state([-1, -1]);
   let swapping = $state(false);
-  let timeOuts = $state<NodeJS.Timeout[]>([]);
+
+  let original: number[] = $state([]);
 
   // Duration in milliseconds
 
@@ -61,6 +60,7 @@
   });
 
   function visualizeQuee() {
+    steps = 0;
     const working = [...queue].reverse();
 
     let el = working.pop();
@@ -71,19 +71,18 @@
       let copyI = i;
       setTimeout(
         () => {
-          const { operation, index_b, index_a } = el_copy;
+          steps++;
+          const { operation, index_b, index_a, value_a } = el_copy;
           switch (operation) {
             case "CHECKING":
               checking = [index_a, index_b];
-              // setTimeout(() => {
-              //   checking = [-1, -1];
-              // }, duration * 1.5);
               break;
             case "SWAPPING":
               swapping = true;
               checking = [index_a, index_b];
 
               setTimeout(() => {
+                steps++;
                 const temp = dati[index_a];
                 dati[index_a] = dati[index_b];
                 dati[index_b] = temp;
@@ -91,6 +90,14 @@
                 setTimeout(() => {
                   swapping = false;
                 }, duration * 0.5);
+              }, duration * 0.2);
+              break;
+            case "SUBSTITUTION":
+              setTimeout(() => {
+                steps++;
+                dati[index_a] = value_a;
+
+                setTimeout(() => {}, duration * 0.5);
               }, duration * 0.2);
               break;
           }
@@ -110,17 +117,7 @@
     queue = [];
   }
 
-  function reset() {
-    for (let o of timeOuts) {
-      clearTimeout(o);
-    }
-    timeOuts = [];
-    checking = [-1, -1];
-    swapping = false;
-  }
-
-  function bubbleSort() {
-    reset();
+  async function bubbleSort() {
     const arr = [...dati];
 
     for (let i = 0; i < arr.length - 1; i++) {
@@ -150,40 +147,32 @@
         }
       }
     }
-    console.log(arr);
   }
 
   async function mergeSort(arr: number[], low: number, high: number): Promise<number[]> {
     if (low >= high) {
-      let a = arr[low];
-      let b = arr[high];
-      if (a !== undefined) return [a];
-      if (b !== undefined) return [b];
+      const el = arr[low];
+      return el ? [el] : [];
     }
 
-    let mid = Math.floor((low + high) / 2);
+    const mid = Math.floor((low + high) / 2);
     const left = await mergeSort(arr, low, mid);
-    const right = await mergeSort(arr, mid + 1, high - 1);
+    const right = await mergeSort(arr, mid + 1, high);
 
     const t = await merge(left, right, low, high);
+
     return t;
   }
 
   async function merge(
-    left_p: number[],
-    right_p: number[],
-    low_p: number,
-    hi_p: number,
+    left: number[],
+    right: number[],
+    low: number,
+    hi: number,
   ): Promise<number[]> {
+    const temp = [];
     let iL = 0,
       iR = 0;
-    let temp: number[] = [];
-    let left = left_p;
-    let right = right_p;
-    let low = low_p;
-    let hi = hi_p;
-
-    console.log(`L: ${low_p} | R: ${hi_p}`);
 
     while (iL < left.length && iR < right.length) {
       queue.push({
@@ -194,39 +183,64 @@
         value_b: right[iR],
       });
 
-      if (left[iL] <= right[iR]) {
-        temp.push(left[iL]);
-        iL++;
-      } else {
+      if (left[iL] > right[iR]) {
+        queue.push({
+          operation: "SUBSTITUTION",
+          index_a: low + iL + iR,
+          index_b: low + iL + iR,
+          value_a: right[iR],
+          value_b: right[iR],
+        });
         temp.push(right[iR]);
         iR++;
-      }
+      } else {
+        queue.push({
+          operation: "SUBSTITUTION",
+          index_a: low + iR + iL,
+          index_b: low + iR + iL,
+          value_a: left[iL],
+          value_b: left[iL],
+        });
 
-      queue.push({
-        operation: "SWAPPING",
-        index_a: low + iL,
-        index_b: hi - iR,
-        value_a: left[iL],
-        value_b: right[iR],
-      });
+        temp.push(left[iL]);
+        iL++;
+      }
     }
+
     while (iL < left.length) {
+      queue.push({
+        operation: "SUBSTITUTION",
+        index_a: low + iR + iL,
+        index_b: low + iR + iL,
+        value_a: left[iL],
+        value_b: left[iL],
+      });
       temp.push(left[iL]);
       iL++;
     }
+
     while (iR < right.length) {
+      queue.push({
+        operation: "SUBSTITUTION",
+        index_a: low + iR + iL,
+        index_b: low + iR + iL,
+        value_a: right[iR],
+        value_b: right[iR],
+      });
       temp.push(right[iR]);
       iR++;
     }
+
     return temp;
   }
 </script>
 
 {#if browser}
-  <pre class="flex justify-between px-4 pt-2">
-    <code>{JSON.stringify(checking, null, 2)}</code>
-    <code>{JSON.stringify(swapping, null, 2)}</code>
-  </pre>
+  <!-- Debugging -->
+  <!-- <pre class="flex justify-between px-4 pt-2"> -->
+  <!--   <code>{JSON.stringify(checking, null, 2)}</code> -->
+  <!--   <code>{JSON.stringify(swapping, null, 2)}</code> -->
+  <!-- </pre> -->
   <div class="flex w-screen grow items-center justify-around gap-8 px-4 py-2">
     <button
       disabled={duration < 10}
@@ -234,11 +248,12 @@
       onclick={async function () {
         switch (algorithm) {
           case "BUBBLE":
-            bubbleSort();
+            await bubbleSort();
             visualizeQuee();
             break;
           case "MERGE":
-            await mergeSort([...dati], 0, dati.length);
+            original = [...dati];
+            const a = await mergeSort([...dati], 0, dati.length);
             visualizeQuee();
             break;
         }
@@ -258,7 +273,6 @@
         step="5"
         class="w-full cursor-pointer"
         bind:value={numElements}
-        onchange={reset}
       />
     </label>
     <label class="w-full">
@@ -286,6 +300,7 @@
       <option value="BUBBLE"> Bubblesort </option>
       <option value="MERGE"> Mergesort </option>
     </select>
+    <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
   </div>
   <svg bind:this={svgElement} class="m-2" viewBox="0 0 {windowWidth} {svgHeight}">
     {#each dati as rettangolo, index}
@@ -303,27 +318,37 @@
     {/each}
   </svg>
 
-  <pre class="flex flex-col">
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each dati as _, idx}
-        <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each dati as x, idx}
-        <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-    <div class="flex min-w-8 flex-wrap justify-between">
-      <p>[</p>
-      {#each queue as x, idx}
-        <p>{idx}: {JSON.stringify(x)}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-  </pre>
+  <!-- Debugging -->
+  <!-- <pre class="flex flex-col"> -->
+  <!--   <div class="flex min-w-8 justify-between"> -->
+  <!--     <p>[</p> -->
+  <!--     {#each dati as _, idx} -->
+  <!--       <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p> -->
+  <!--     {/each} -->
+  <!--     <p>]</p> -->
+  <!--   </div> -->
+  <!--   <div class="flex min-w-8 justify-between"> -->
+  <!--     <p>[</p> -->
+  <!--     {#each dati as x, idx} -->
+  <!--       <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p> -->
+  <!--     {/each} -->
+  <!--     <p>]</p> -->
+  <!--   </div> -->
+  <!--   <div class="flex min-w-8 justify-between"> -->
+  <!--     <p>[</p> -->
+  <!--     {#each original as x, idx} -->
+  <!--       <p>{x}{idx !== original.length - 1 ? ", " : ""}</p> -->
+  <!--     {/each} -->
+  <!--     <p>]</p> -->
+  <!--   </div> -->
+  <!---->
+  <!--   <div class="flex flex-wrap align-middle"> -->
+  <!--     {#each queue as x, idx} -->
+  <!--       <p class="max-h-8 align-middle">{idx}: {JSON.stringify(x)}{idx !== queue.length - 1 -->
+  <!--           ? ", " -->
+  <!--           : ""} -->
+  <!--       </p> -->
+  <!--     {/each} -->
+  <!--   </div> -->
+  <!-- </pre> -->
 {/if}
