@@ -2,11 +2,21 @@
   import { browser } from "$app/environment";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
 
+  interface VisualQueue {
+    operation: "CHECKING" | "SWAPPING" | "SUBSTITUTION";
+    index_a: number;
+    index_b: number;
+    value_a: number;
+    value_b: number;
+  }
+
+  type Algorithms = "BUBBLE" | "MERGE" | "QUICK" | "INSERTION";
+
   let numElements = $state(100);
   let topNumber = $state(500);
   let duration = $state(10);
 
-  let algorithm: "BUBBLE" | "MERGE" | "QUICK" = $state("QUICK");
+  let algorithm: Algorithms = $state("INSERTION");
 
   let windowHeight: number | undefined = $state(0);
   let windowWidth: number | undefined = $state(0);
@@ -16,18 +26,11 @@
   let biggest = $state(0);
   let steps = $state(0);
 
-  interface VisualQueue {
-    operation: "CHECKING" | "SWAPPING" | "SUBSTITUTION";
-    index_a: number;
-    index_b: number;
-    value_a: number;
-    value_b: number;
-  }
-
   let queue: VisualQueue[] = $state([]);
+  let queueTimeouts: NodeJS.Timeout[] = $state([]);
 
-  const randomArray = () =>
-    [...new Array(numElements)].map(() => {
+  const randomArray = (numEl: number) =>
+    [...new Array(numEl)].map(() => {
       const num = Math.max(Math.round(Math.random() * 100000000) % topNumber, 1);
       if (biggest < num) {
         biggest = num;
@@ -35,8 +38,7 @@
       return num;
     });
 
-  const intialState = randomArray();
-  let dati = $state(intialState);
+  let dati = $state(randomArray(numElements));
   let checking: [number, number] = $state([-1, -1]);
   let swapping = $state(false);
 
@@ -55,66 +57,71 @@
     }
   });
 
-  $effect(() => {
-    dati = randomArray();
-  });
+  function resetAll() {
+    dati = randomArray(numElements);
+    original = [];
+    queue = [];
+
+    for (let timeout of queueTimeouts) {
+      clearTimeout(timeout);
+    }
+  }
 
   function visualizeQuee() {
     steps = 0;
     const working = [...queue].reverse();
 
     let el = working.pop();
-    let i = 0;
-
+    let i = 1;
     while (el != undefined) {
       const el_copy = el;
       let copyI = i;
-      setTimeout(
-        () => {
-          steps++;
-          const { operation, index_b, index_a, value_a } = el_copy;
-          switch (operation) {
-            case "CHECKING":
-              checking = [index_a, index_b];
-              break;
-            case "SWAPPING":
-              swapping = true;
-              checking = [index_a, index_b];
+      const firstClear = setTimeout(() => {
+        steps++;
+        const { operation, index_b, index_a, value_a } = el_copy;
+        switch (operation) {
+          case "CHECKING":
+            checking = [index_a, index_b];
+            break;
+          case "SWAPPING":
+            swapping = true;
+            checking = [index_a, index_b];
 
-              setTimeout(() => {
-                steps++;
-                const temp = dati[index_a];
-                dati[index_a] = dati[index_b];
-                dati[index_b] = temp;
+            const swappingClear = setTimeout(() => {
+              steps++;
+              const temp = dati[index_a];
+              dati[index_a] = dati[index_b];
+              dati[index_b] = temp;
 
-                setTimeout(() => {
-                  swapping = false;
-                }, duration * 0.5);
-              }, duration * 0.2);
-              break;
-            case "SUBSTITUTION":
-              setTimeout(() => {
-                steps++;
-                if (index_a === undefined) return;
-                dati[index_a] = value_a;
-
-                setTimeout(() => {}, duration * 0.5);
-              }, duration * 0.2);
-              break;
-          }
-        },
-        duration * (copyI + 1),
-      );
+              const swappingReset = setTimeout(() => {
+                swapping = false;
+              }, duration * 0.5);
+              queueTimeouts.push(swappingReset);
+            }, duration * 0.2);
+            queueTimeouts.push(swappingClear);
+            break;
+          case "SUBSTITUTION":
+            const subsClear = setTimeout(() => {
+              steps++;
+              if (index_a === undefined) return;
+              dati[index_a] = value_a;
+            }, duration * 0.2);
+            queueTimeouts.push(subsClear);
+            break;
+        }
+      }, duration * copyI);
+      queueTimeouts.push(firstClear);
       el = working.pop();
       i++;
     }
 
-    setTimeout(
+    const finalReset = setTimeout(
       () => {
         checking = [-1, -1];
       },
       duration * i + 2,
     );
+    queueTimeouts.push(finalReset);
     queue = [];
   }
 
@@ -265,19 +272,23 @@
       });
 
       if (arr[j] <= pivot) {
-        queue.push({
-          operation: "SWAPPING",
-          index_a: i,
-          index_b: j,
-          value_a: arr[i],
-          value_b: arr[j],
-        });
-        const temp = arr[j];
-        arr[j] = arr[i];
-        arr[i] = temp;
+        if (j !== i) {
+          queue.push({
+            operation: "SWAPPING",
+            index_a: i,
+            index_b: j,
+            value_a: arr[i],
+            value_b: arr[j],
+          });
+          const temp = arr[j];
+          arr[j] = arr[i];
+          arr[i] = temp;
+        }
         i++;
       }
     }
+
+    if (hi === i) return i;
     const temp = arr[hi];
     arr[hi] = arr[i];
     arr[i] = temp;
@@ -292,6 +303,51 @@
 
     return i;
   }
+
+  async function insertionSort(arr: number[], dimension = arr.length - 1) {
+    if (dimension <= 0) {
+      return;
+    }
+
+    insertionSort(arr, dimension - 1);
+    const x = arr[dimension];
+    let j = dimension - 1;
+
+    queue.push({
+      operation: "CHECKING",
+      index_a: j,
+      index_b: dimension,
+      value_a: arr[j],
+      value_b: x,
+    });
+
+    while (j >= 0 && arr[j] > x) {
+      queue.push({
+        operation: "CHECKING",
+        index_a: j,
+        index_b: dimension,
+        value_a: arr[j],
+        value_b: x,
+      });
+      queue.push({
+        operation: "SUBSTITUTION",
+        index_a: j + 1,
+        index_b: j + 1,
+        value_a: arr[j],
+        value_b: arr[j],
+      });
+      arr[j + 1] = arr[j];
+      j = j - 1;
+    }
+    queue.push({
+      operation: "SUBSTITUTION",
+      index_a: j + 1,
+      index_b: j + 1,
+      value_a: x,
+      value_b: x,
+    });
+    arr[j + 1] = x;
+  }
 </script>
 
 {#if browser}
@@ -305,24 +361,34 @@
       disabled={duration < 10 || topNumber > 500 || topNumber <= 0}
       class="w-full cursor-pointer rounded-sm border px-4 py-1 font-bold uppercase disabled:cursor-default"
       onclick={async function () {
+        original = [...dati];
         switch (algorithm) {
           case "BUBBLE":
             await bubbleSort();
-            visualizeQuee();
             break;
           case "MERGE":
-            original = [...dati];
             await mergeSort([...dati], 0, dati.length);
-            visualizeQuee();
             break;
           case "QUICK":
             await quickSort([...dati]);
-            visualizeQuee();
             break;
+          case "INSERTION":
+            await insertionSort([...dati]);
         }
+        visualizeQuee();
       }}
     >
       Sort
+    </button>
+    <button
+      disabled={original.length !== dati.length}
+      class="w-full cursor-pointer rounded-sm border bg-red-300 px-4 py-1 font-bold uppercase disabled:cursor-default disabled:opacity-40"
+      onclick={() => {
+        dati = original;
+        original = [];
+      }}
+    >
+      Reset
     </button>
     <label class="w-full">
       <p>
@@ -335,12 +401,30 @@
         max="100"
         step="5"
         class="w-full cursor-pointer"
-        bind:value={numElements}
+        bind:value={
+          () => numElements,
+          (v) => {
+            numElements = v;
+            dati = randomArray(v);
+          }
+        }
       />
     </label>
     <label class="w-full">
       <p>Duration</p>
-      <input bind:value={duration} class="w-full" type="number" min="10" step="5" max="3000" />
+      <input
+        bind:value={
+          () => duration,
+          (v) => {
+            duration = v;
+          }
+        }
+        class="w-full"
+        type="number"
+        min="10"
+        step="5"
+        max="3000"
+      />
     </label>
     <label class="w-full">
       <p>Max</p>
@@ -360,9 +444,10 @@
       />
     </label>
     <select bind:value={algorithm} class="cursor-pointer [&_*]:text-yellow-600">
-      <option value="BUBBLE"> Bubblesort </option>
-      <option value="MERGE"> Mergesort </option>
-      <option value="QUICK"> Quicksort </option>
+      <option value="BUBBLE">Bubblesort </option>
+      <option value="MERGE">Mergesort </option>
+      <option value="QUICK">Quicksort </option>
+      <option value="INSERTION">Insertionsort </option>
     </select>
     <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
   </div>
@@ -412,6 +497,5 @@
   <!--     </p> -->
   <!--     {/each} -->
   <!-- </div> -->
-  <!---->
   <!-- </pre> -->
 {/if}
