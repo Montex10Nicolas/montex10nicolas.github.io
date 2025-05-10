@@ -1,27 +1,15 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
-
-  /*
-    Checking changes the CHECKING state to the passed index_a and index_b
-    Swapping index_a and index_b
-    Substitution changes the value of index_a with value_a
-  */
-  interface VisualQueue {
-    operation: "CHECKING" | "SWAPPING" | "SUBSTITUTION";
-    index_a: number;
-    index_b: number;
-    value_a: number;
-    value_b: number;
-  }
-
-  type Algorithms = "BUBBLE" | "MERGE" | "QUICK" | "INSERTION";
+  import { WorkingQueue as queue } from "$lib/algo/QueueVisualizer.svelte";
+  import type { Algorithms } from "$lib/types/Algos";
+  import { mergeSort } from "$lib/algo/mergesort";
 
   let numElements = $state(100);
   let topNumber = $state(500);
   let duration = $state(10); //ms
 
-  let algorithm: Algorithms = $state("INSERTION");
+  let algorithm: Algorithms = $state("MERGE");
 
   let windowHeight: number | undefined = $state(0);
   let windowWidth: number | undefined = $state(0);
@@ -31,7 +19,6 @@
   let biggest = $state(0);
   let steps = $state(0);
 
-  let queue: VisualQueue[] = $state([]);
   let queueTimeouts: NodeJS.Timeout[] = $state([]);
 
   const randomArray = (numEl: number) =>
@@ -61,10 +48,10 @@
   });
 
   function clearQueue() {
-    queue = [];
     for (let timeout of queueTimeouts) {
       clearTimeout(timeout);
     }
+    queue;
   }
 
   function resetAll() {
@@ -82,6 +69,8 @@
   async function visualizeQuee() {
     steps = 0;
     const working = [...queue].reverse();
+    console.log("this is working");
+    console.log(working);
 
     let el = working.pop();
     let i = 1;
@@ -135,7 +124,7 @@
       duration * i + 2,
     );
     queueTimeouts.push(finalReset);
-    queue = [];
+    clearQueue();
   }
 
   async function bubbleSort() {
@@ -168,89 +157,6 @@
         }
       }
     }
-  }
-
-  async function mergeSort(arr: number[], low: number, high: number): Promise<number[]> {
-    if (low >= high) {
-      const el = arr[low];
-      return el ? [el] : [];
-    }
-
-    const mid = Math.floor((low + high) / 2);
-    const left = await mergeSort(arr, low, mid);
-    const right = await mergeSort(arr, mid + 1, high);
-
-    return await merge(left, right, low, high);
-  }
-
-  async function merge(
-    left: number[],
-    right: number[],
-    low: number,
-    hi: number,
-  ): Promise<number[]> {
-    const temp = [];
-    let iL = 0,
-      iR = 0;
-
-    while (iL < left.length && iR < right.length) {
-      queue.push({
-        operation: "CHECKING",
-        index_a: low + iL,
-        index_b: hi - iR,
-        value_a: left[iL],
-        value_b: right[iR],
-      });
-
-      if (left[iL] > right[iR]) {
-        queue.push({
-          operation: "SUBSTITUTION",
-          index_a: low + iL + iR,
-          index_b: low + iL + iR,
-          value_a: right[iR],
-          value_b: right[iR],
-        });
-        temp.push(right[iR]);
-        iR++;
-      } else {
-        queue.push({
-          operation: "SUBSTITUTION",
-          index_a: low + iR + iL,
-          index_b: low + iR + iL,
-          value_a: left[iL],
-          value_b: left[iL],
-        });
-
-        temp.push(left[iL]);
-        iL++;
-      }
-    }
-
-    while (iL < left.length) {
-      queue.push({
-        operation: "SUBSTITUTION",
-        index_a: low + iR + iL,
-        index_b: low + iR + iL,
-        value_a: left[iL],
-        value_b: left[iL],
-      });
-      temp.push(left[iL]);
-      iL++;
-    }
-
-    while (iR < right.length) {
-      queue.push({
-        operation: "SUBSTITUTION",
-        index_a: low + iR + iL,
-        index_b: low + iR + iL,
-        value_a: right[iR],
-        value_b: right[iR],
-      });
-      temp.push(right[iR]);
-      iR++;
-    }
-
-    return temp;
   }
 
   async function quickSort(arr: number[], low = 0, hi = arr.length - 1) {
@@ -491,34 +397,35 @@
   </svg>
 
   <!-- Debugging -->
-  <!-- <pre class="flex flex-col"> -->
-  <!--   <div class="flex min-w-8 justify-between"> -->
-  <!--     <p>[</p> -->
-  <!--     {#each dati as _, idx} -->
-  <!--       <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p> -->
-  <!--     {/each} -->
-  <!--     <p>]</p> -->
-  <!--   </div> -->
-  <!--   <div class="flex min-w-8 justify-between"> -->
-  <!--     <p>[</p> -->
-  <!--     {#each dati as x, idx} -->
-  <!--       <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p> -->
-  <!--     {/each} -->
-  <!--     <p>]</p> -->
-  <!--   </div> -->
-  <!--   <div class="flex min-w-8 justify-between"> -->
-  <!--     <p>[</p> -->
-  <!--     {#each original as x, idx} -->
-  <!--       <p>{x}{idx !== original.length - 1 ? ", " : ""}</p> -->
-  <!--     {/each} -->
-  <!--     <p>]</p> -->
-  <!--   </div> -->
-  <!-- <div class="flex flex-wrap align-middle"> -->
-  <!--   {#each queue as x, idx} -->
-  <!--       <p class="max-h-8 align-middle"> -->
-  <!--       {idx}: {JSON.stringify(x)}{idx !== queue.length - 1 ? ", " : ""} -->
-  <!--     </p> -->
-  <!--     {/each} -->
-  <!-- </div> -->
-  <!-- </pre> -->
+
+  <pre class="flex flex-col">
+    <div class="flex min-w-8 justify-between">
+      <p>[</p>
+      {#each dati as _, idx}
+        <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p>
+      {/each}
+      <p>]</p>
+    </div>
+    <div class="flex min-w-8 justify-between">
+      <p>[</p>
+      {#each dati as x, idx}
+        <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p>
+      {/each}
+      <p>]</p>
+    </div>
+    <div class="flex min-w-8 justify-between">
+      <p>[</p>
+      {#each original as x, idx}
+        <p>{x}{idx !== original.length - 1 ? ", " : ""}</p>
+      {/each}
+      <p>]</p>
+    </div>
+  <div class="flex flex-wrap align-middle">
+    {#each queue as x, idx}
+        <p class="max-h-8 align-middle">
+        {idx}: {JSON.stringify(x)}{idx !== queue.length - 1 ? ", " : ""}
+      </p>
+      {/each}
+  </div>
+  </pre>
 {/if}
