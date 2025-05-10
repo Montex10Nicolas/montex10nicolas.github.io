@@ -2,6 +2,11 @@
   import { browser } from "$app/environment";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
 
+  /*
+    Checking changes the CHECKING state to the passed index_a and index_b
+    Swapping index_a and index_b
+    Substitution changes the value of index_a with value_a
+  */
   interface VisualQueue {
     operation: "CHECKING" | "SWAPPING" | "SUBSTITUTION";
     index_a: number;
@@ -14,7 +19,7 @@
 
   let numElements = $state(100);
   let topNumber = $state(500);
-  let duration = $state(10);
+  let duration = $state(10); //ms
 
   let algorithm: Algorithms = $state("INSERTION");
 
@@ -31,7 +36,7 @@
 
   const randomArray = (numEl: number) =>
     [...new Array(numEl)].map(() => {
-      const num = Math.max(Math.round(Math.random() * 100000000) % topNumber, 1);
+      const num = Math.max(Math.round(Math.random() * 199999999) % topNumber, 1);
       if (biggest < num) {
         biggest = num;
       }
@@ -41,10 +46,8 @@
   let dati = $state(randomArray(numElements));
   let checking: [number, number] = $state([-1, -1]);
   let swapping = $state(false);
-
   let original: number[] = $state([]);
-
-  // Duration in milliseconds
+  let sorting = $state(false);
 
   $effect(function () {
     if (browser) {
@@ -57,17 +60,26 @@
     }
   });
 
-  function resetAll() {
-    dati = randomArray(numElements);
-    original = [];
+  function clearQueue() {
     queue = [];
-
     for (let timeout of queueTimeouts) {
       clearTimeout(timeout);
     }
   }
 
-  function visualizeQuee() {
+  function resetAll() {
+    original = [];
+    checking = [-1, -1];
+    swapping = false;
+
+    clearQueue();
+
+    dati = randomArray(numElements);
+    sorting = false;
+    steps = 0;
+  }
+
+  async function visualizeQuee() {
     steps = 0;
     const working = [...queue].reverse();
 
@@ -117,6 +129,7 @@
 
     const finalReset = setTimeout(
       () => {
+        sorting = false;
         checking = [-1, -1];
       },
       duration * i + 2,
@@ -358,10 +371,11 @@
   <!-- </pre> -->
   <div class="flex w-screen grow items-center justify-around gap-8 px-4 py-2">
     <button
-      disabled={duration < 10 || topNumber > 500 || topNumber <= 0}
-      class="w-full cursor-pointer rounded-sm border px-4 py-1 font-bold uppercase disabled:cursor-default"
+      disabled={duration < 10 || topNumber > 500 || topNumber <= 0 || sorting}
+      class="w-full cursor-pointer rounded-sm border bg-amber-200 px-4 py-1 font-bold uppercase disabled:cursor-default disabled:bg-transparent"
       onclick={async function () {
         original = [...dati];
+        sorting = true;
         switch (algorithm) {
           case "BUBBLE":
             await bubbleSort();
@@ -375,26 +389,35 @@
           case "INSERTION":
             await insertionSort([...dati]);
         }
-        visualizeQuee();
+        await visualizeQuee();
       }}
     >
       Sort
     </button>
     <button
-      disabled={original.length !== dati.length}
-      class="w-full cursor-pointer rounded-sm border bg-red-300 px-4 py-1 font-bold uppercase disabled:cursor-default disabled:opacity-40"
+      class="w-full cursor-pointer rounded-sm border bg-red-300 px-4 py-1 text-sm font-bold uppercase disabled:cursor-default disabled:opacity-40"
+      onclick={resetAll}
+    >
+      New Data
+    </button>
+    <button
+      class="w-full cursor-pointer rounded-sm border bg-amber-300 px-4 py-1 text-sm font-bold uppercase disabled:cursor-default disabled:opacity-40"
       onclick={() => {
+        clearQueue();
         dati = original;
-        original = [];
+        swapping = false;
+        checking = [-1, -1];
       }}
     >
-      Reset
+      Unsort
     </button>
     <label class="w-full">
-      <p>
-        Number of elements:
-        <bold class="font-bold">{numElements}</bold>
-      </p>
+      <p class="">Number of elements:</p>
+      <input
+        type="text"
+        class="flex-grow-0 cursor-pointer appearance-none border-none font-bold"
+        bind:value={numElements}
+      />
       <input
         type="range"
         min="5"
@@ -405,7 +428,7 @@
           () => numElements,
           (v) => {
             numElements = v;
-            dati = randomArray(v);
+            resetAll();
           }
         }
       />
