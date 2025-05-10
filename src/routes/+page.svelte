@@ -8,7 +8,7 @@
   import { quickSort } from "$lib/algo/QuickSort";
   import { insertionSort } from "$lib/algo/Insertionsort";
 
-  let numElements = $state(30);
+  let numElements = $state(100);
   let topNumber = $state(500);
   let duration = $state(10); //ms
 
@@ -38,11 +38,13 @@
   let swapping = $state(false);
   let original: number[] = $state([]);
   let sorting = $state(false);
+  let audioCtx: AudioContext | undefined = $state();
 
   $effect(function () {
     if (browser) {
       windowHeight = innerHeight.current;
       windowWidth = innerWidth.current;
+      audioCtx = new window.AudioContext();
 
       if (svgElement && windowHeight) {
         svgHeight = windowHeight - svgElement.getBoundingClientRect().y;
@@ -84,6 +86,14 @@
         switch (operation) {
           case "CHECKING":
             checking = [index_a, index_b];
+
+            const perc = (n: number) => {
+              return Math.floor((dati[n] / biggest) * 100);
+            };
+
+            playNote(perc(index_a), 100);
+            playNote(perc(index_b), 100);
+
             break;
           case "SWAPPING":
             swapping = true;
@@ -126,6 +136,35 @@
       duration * i + 2,
     );
     queueTimeouts.push(finalReset);
+  }
+
+  function playNote(percent: number, duration = 1000) {
+    let min = 120,
+      max = 1212; // Hertz values
+    if (audioCtx === undefined) {
+      return;
+    }
+
+    const frequency = (max / 100) * percent + min;
+
+    let gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.01;
+
+    let oscillator = audioCtx.createOscillator();
+
+    oscillator.type = "triangle";
+    oscillator.frequency.value = frequency; // value in hertz
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+
+    setTimeout(function () {
+      oscillator.stop();
+    }, duration);
+
+    return () => {
+      oscillator.stop();
+    };
   }
 </script>
 
@@ -241,7 +280,8 @@
     </select>
     <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
   </div>
-  <svg bind:this={svgElement} class="m-2" viewBox="0 0 {windowWidth} {svgHeight}">
+
+  <svg bind:this={svgElement} class="" viewBox="0 0 {windowWidth} {svgHeight}">
     {#each dati as rettangolo, index}
       {@const width = windowWidth! / numElements}
       {@const height = (svgHeight / 100) * Math.floor((rettangolo / biggest) * 100)}
@@ -258,35 +298,35 @@
   </svg>
 
   <!-- Debugging -->
-
-  <pre class="flex flex-col">
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each dati as _, idx}
-        <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each dati as x, idx}
-        <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-    <div class="flex min-w-8 justify-between">
-      <p>[</p>
-      {#each original as x, idx}
-        <p>{x}{idx !== original.length - 1 ? ", " : ""}</p>
-      {/each}
-      <p>]</p>
-    </div>
-  <div class="flex flex-wrap align-middle">
-    {#each queue.visual() as x, idx}
-        <p class="max-h-8 align-middle">
-        {idx}: {JSON.stringify(x)}{idx !== queue.visual().length - 1 ? ", " : ""}
-      </p>
-      {/each}
-  </div>
-  </pre>
+  <!---->
+  <!-- <pre class="flex flex-col"> -->
+  <!--   <div class="flex min-w-8 justify-between"> -->
+  <!--     <p>[</p> -->
+  <!--     {#each dati as _, idx} -->
+  <!--       <p>{idx}{idx !== dati.length - 1 ? ", " : ""}</p> -->
+  <!--     {/each} -->
+  <!--     <p>]</p> -->
+  <!--   </div> -->
+  <!--   <div class="flex min-w-8 justify-between"> -->
+  <!--     <p>[</p> -->
+  <!--     {#each dati as x, idx} -->
+  <!--       <p>{x}{idx !== dati.length - 1 ? ", " : ""}</p> -->
+  <!--     {/each} -->
+  <!--     <p>]</p> -->
+  <!--   </div> -->
+  <!--   <div class="flex min-w-8 justify-between"> -->
+  <!--     <p>[</p> -->
+  <!--     {#each original as x, idx} -->
+  <!--       <p>{x}{idx !== original.length - 1 ? ", " : ""}</p> -->
+  <!--     {/each} -->
+  <!--     <p>]</p> -->
+  <!--   </div> -->
+  <!-- <div class="flex flex-wrap align-middle"> -->
+  <!--   {#each queue.visual() as x, idx} -->
+  <!--       <p class="max-h-8 align-middle"> -->
+  <!--       {idx}: {JSON.stringify(x)}{idx !== queue.visual().length - 1 ? ", " : ""} -->
+  <!--     </p> -->
+  <!--     {/each} -->
+  <!-- </div> -->
+  <!-- </pre> -->
 {/if}
