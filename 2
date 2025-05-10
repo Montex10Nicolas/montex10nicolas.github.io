@@ -8,11 +8,11 @@
   import { quickSort } from "$lib/algo/QuickSort";
   import { insertionSort } from "$lib/algo/Insertionsort";
 
-  let numElements = $state(2000);
+  let numElements = $state(100);
   let topNumber = $state(500);
   let duration = $state(10); //ms
 
-  let algorithm: Algorithms = $state("QUICK");
+  let algorithm: Algorithms = $state("MERGE");
 
   let windowHeight: number | undefined = $state(0);
   let windowWidth: number | undefined = $state(0);
@@ -42,8 +42,8 @@
 
   $effect(function () {
     if (browser) {
-      windowWidth = innerWidth.current;
       windowHeight = innerHeight.current;
+      windowWidth = innerWidth.current;
       audioCtx = new window.AudioContext();
 
       if (svgElement && windowHeight) {
@@ -66,9 +66,7 @@
 
     clearQueue();
 
-    console.log(numElements);
     dati = randomArray(numElements);
-    console.table(dati);
     sorting = false;
     steps = 0;
   }
@@ -93,8 +91,8 @@
               return Math.floor((dati[n] / biggest) * 100);
             };
 
-            playNote(perc(index_a), duration);
-            playNote(perc(index_b), duration);
+            playNote(perc(index_a), 100);
+            playNote(perc(index_b), 100);
 
             break;
           case "SWAPPING":
@@ -138,10 +136,6 @@
       duration * i + 2,
     );
     queueTimeouts.push(finalReset);
-
-    return () => {
-      clearQueue();
-    };
   }
 
   function playNote(percent: number, duration = 1000) {
@@ -182,7 +176,7 @@
   <!-- </pre> -->
   <div class="flex w-screen grow items-center justify-around gap-8 px-4 py-2">
     <button
-      disabled={topNumber > 500 || topNumber <= 0 || sorting || duration < 10 || numElements > 2000}
+      disabled={duration < 10 || topNumber > 500 || topNumber <= 0 || sorting}
       class="w-full cursor-pointer rounded-sm border bg-amber-200 px-4 py-1 font-bold uppercase disabled:cursor-default disabled:bg-transparent"
       onclick={async function () {
         original = [...dati];
@@ -226,22 +220,14 @@
     <label class="w-full">
       <p class="">Number of elements:</p>
       <input
-        type="number"
-        min="5"
-        max="2000"
+        type="text"
         class="flex-grow-0 cursor-pointer appearance-none border-none font-bold"
-        bind:value={
-          () => numElements,
-          (v) => {
-            numElements = v;
-            resetAll();
-          }
-        }
+        bind:value={numElements}
       />
       <input
         type="range"
         min="5"
-        max="2000"
+        max="100"
         step="5"
         class="w-full cursor-pointer"
         bind:value={
@@ -264,7 +250,7 @@
         }
         class="w-full"
         type="number"
-        min="1"
+        min="10"
         step="5"
         max="3000"
       />
@@ -295,18 +281,21 @@
     <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
   </div>
 
-  <svg bind:this={svgElement} viewBox="0 0 {windowWidth} {svgHeight}">
+  <svg bind:this={svgElement} class="" viewBox="0 0 {windowWidth} {svgHeight}">
+    <text x="20" y="20" fill="black">{windowWidth}</text>
     {#each dati as rettangolo, index}
       {@const width = windowWidth! / numElements}
       {@const height = (svgHeight / 100) * Math.floor((rettangolo / biggest) * 100)}
+      {#if index === 1}
+        <text x="40" y="40" fill="black">{width} {height}</text>
+      {/if}
       <rect
-        data-index={index}
         width="{width}px"
         y="{svgHeight - height}px"
         x={width * index + 0.1}
         height={`${height}px`}
         stroke="blue"
-        stroke-width={numElements > 300 ? 0 : 0.2}
+        stroke-width="0.4px"
         fill={!checking.includes(index) ? "black" : swapping ? "blue" : "green"}
       />
     {/each}
