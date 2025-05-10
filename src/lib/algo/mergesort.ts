@@ -1,4 +1,4 @@
-import { WorkingQueue as queue } from "$lib/algo/QueueVisualizer.svelte";
+import { queue } from "$lib/algo/QueueVisualizer.svelte";
 
 export async function mergeSort(arr: number[], low: number, high: number): Promise<number[]> {
   if (low >= high) {
@@ -9,8 +9,6 @@ export async function mergeSort(arr: number[], low: number, high: number): Promi
   const mid = Math.floor((low + high) / 2);
   const left = await mergeSort(arr, low, mid);
   const right = await mergeSort(arr, mid + 1, high);
-
-  console.debug(queue, "In mergesort");
 
   return await merge(left, right, low, high);
 }

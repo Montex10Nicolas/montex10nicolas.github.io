@@ -1,20 +1,21 @@
 import type { VisualQueue } from "$lib/types/Algos";
 
-export class VisualizationQueue {
-  public queue: VisualQueue[] = $state([]);
+export class SortingQueue {
+  private queue: VisualQueue[] = [];
 
-  constructor() {
-    this.queue = [];
-  }
+  constructor() {}
 
-  public addElement = (el: VisualQueue) => {
+  public push = (el: VisualQueue) => {
     this.queue.push(el);
   };
 
   public clear = () => {
     this.queue = [];
   };
+
+  public visual() {
+    return this.queue.reverse();
+  }
 }
 
-export let WorkingClass = new VisualizationQueue();
-export let WorkingQueue = WorkingClass.queue;
+export const queue = new SortingQueue();

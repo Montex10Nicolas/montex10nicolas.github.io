@@ -1,11 +1,14 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import { innerHeight, innerWidth } from "svelte/reactivity/window";
-  import { WorkingQueue as queue } from "$lib/algo/QueueVisualizer.svelte";
+  import { queue } from "$lib/algo/QueueVisualizer.svelte";
   import type { Algorithms } from "$lib/types/Algos";
   import { mergeSort } from "$lib/algo/mergesort";
+  import { bubbleSort } from "$lib/algo/BubbleSort";
+  import { quickSort } from "$lib/algo/QuickSort";
+  import { insertionSort } from "$lib/algo/Insertionsort";
 
-  let numElements = $state(100);
+  let numElements = $state(30);
   let topNumber = $state(500);
   let duration = $state(10); //ms
 
@@ -51,7 +54,7 @@
     for (let timeout of queueTimeouts) {
       clearTimeout(timeout);
     }
-    queue;
+    queue.clear();
   }
 
   function resetAll() {
@@ -68,9 +71,7 @@
 
   async function visualizeQuee() {
     steps = 0;
-    const working = [...queue].reverse();
-    console.log("this is working");
-    console.log(working);
+    const working = queue.visual();
 
     let el = working.pop();
     let i = 1;
@@ -120,152 +121,11 @@
       () => {
         sorting = false;
         checking = [-1, -1];
+        clearQueue();
       },
       duration * i + 2,
     );
     queueTimeouts.push(finalReset);
-    clearQueue();
-  }
-
-  async function bubbleSort() {
-    const arr = [...dati];
-
-    for (let i = 0; i < arr.length - 1; i++) {
-      for (let j = i + 1; j < arr.length; j++) {
-        const copyI = i,
-          copyJ = j;
-
-        queue.push({
-          operation: "CHECKING",
-          index_a: copyI,
-          index_b: copyJ,
-          value_a: arr[i],
-          value_b: arr[j],
-        });
-
-        if (arr[i] > arr[j]) {
-          const temp = arr[copyI];
-          arr[copyI] = arr[copyJ];
-          arr[copyJ] = temp;
-          queue.push({
-            operation: "SWAPPING",
-            index_a: copyI,
-            index_b: copyJ,
-            value_a: arr[i],
-            value_b: arr[j],
-          });
-        }
-      }
-    }
-  }
-
-  async function quickSort(arr: number[], low = 0, hi = arr.length - 1) {
-    if (low >= hi || low < 0) {
-      return;
-    }
-
-    let p = await partition(arr, low, hi);
-    await quickSort(arr, low, p - 1);
-    await quickSort(arr, p + 1, hi);
-  }
-
-  async function partition(arr: number[], low: number, hi: number) {
-    const pivot = arr[hi];
-    let i = low;
-
-    queue.push({
-      operation: "CHECKING",
-      index_a: hi,
-      index_b: -1,
-      value_a: pivot,
-      value_b: -1,
-    });
-
-    for (let j = low; j <= hi - 1; j++) {
-      queue.push({
-        operation: "CHECKING",
-        index_a: hi,
-        index_b: j,
-        value_a: pivot,
-        value_b: arr[j],
-      });
-
-      if (arr[j] <= pivot) {
-        if (j !== i) {
-          queue.push({
-            operation: "SWAPPING",
-            index_a: i,
-            index_b: j,
-            value_a: arr[i],
-            value_b: arr[j],
-          });
-          const temp = arr[j];
-          arr[j] = arr[i];
-          arr[i] = temp;
-        }
-        i++;
-      }
-    }
-
-    if (hi === i) return i;
-    const temp = arr[hi];
-    arr[hi] = arr[i];
-    arr[i] = temp;
-
-    queue.push({
-      operation: "SWAPPING",
-      index_a: hi,
-      index_b: i,
-      value_a: pivot,
-      value_b: arr[i],
-    });
-
-    return i;
-  }
-
-  async function insertionSort(arr: number[], dimension = arr.length - 1) {
-    if (dimension <= 0) {
-      return;
-    }
-
-    insertionSort(arr, dimension - 1);
-    const x = arr[dimension];
-    let j = dimension - 1;
-
-    queue.push({
-      operation: "CHECKING",
-      index_a: j,
-      index_b: dimension,
-      value_a: arr[j],
-      value_b: x,
-    });
-
-    while (j >= 0 && arr[j] > x) {
-      queue.push({
-        operation: "CHECKING",
-        index_a: j,
-        index_b: dimension,
-        value_a: arr[j],
-        value_b: x,
-      });
-      queue.push({
-        operation: "SUBSTITUTION",
-        index_a: j + 1,
-        index_b: j + 1,
-        value_a: arr[j],
-        value_b: arr[j],
-      });
-      arr[j + 1] = arr[j];
-      j = j - 1;
-    }
-    queue.push({
-      operation: "SUBSTITUTION",
-      index_a: j + 1,
-      index_b: j + 1,
-      value_a: x,
-      value_b: x,
-    });
-    arr[j + 1] = x;
   }
 </script>
 
@@ -284,7 +144,7 @@
         sorting = true;
         switch (algorithm) {
           case "BUBBLE":
-            await bubbleSort();
+            await bubbleSort([...dati]);
             break;
           case "MERGE":
             await mergeSort([...dati], 0, dati.length);
@@ -313,6 +173,7 @@
         dati = original;
         swapping = false;
         checking = [-1, -1];
+        sorting = false;
       }}
     >
       Unsort
@@ -421,9 +282,9 @@
       <p>]</p>
     </div>
   <div class="flex flex-wrap align-middle">
-    {#each queue as x, idx}
+    {#each queue.visual() as x, idx}
         <p class="max-h-8 align-middle">
-        {idx}: {JSON.stringify(x)}{idx !== queue.length - 1 ? ", " : ""}
+        {idx}: {JSON.stringify(x)}{idx !== queue.visual().length - 1 ? ", " : ""}
       </p>
       {/each}
   </div>
