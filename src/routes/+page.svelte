@@ -302,7 +302,7 @@
   <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
 </div>
 
-<svg bind:this={svgElement} viewBox="0 0 {innerWidth} {innerHeight - svgHeight}">
+<svg bind:this={svgElement} viewBox="0 0 {innerWidth} {svgHeight}">
   {#each dati as rettangolo, index}
     {@const width = innerWidth! / numElements}
     {@const height = (svgHeight / 100) * Math.floor((rettangolo / biggest) * 100)}
