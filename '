@@ -5,6 +5,7 @@
   import { bubbleSort } from "$lib/algo/BubbleSort";
   import { quickSort } from "$lib/algo/QuickSort";
   import { insertionSort } from "$lib/algo/Insertionsort";
+  import { numeric } from "drizzle-orm/pg-core";
 
   let numElements = $state(50);
   let topNumber = $state(500);
@@ -12,8 +13,8 @@
 
   let algorithm: Algorithms = $state("QUICK");
 
-  let innerHeight: number = $state(0);
-  let innerWidth: number = $state(0);
+  let innerHeight: number | undefined = $state(0);
+  let innerWidth: number | undefined = $state(0);
 
   let svgElement: SVGSVGElement | undefined = $state();
   let svgHeight = $state(0);
@@ -182,20 +183,11 @@
 <!--   <code>{JSON.stringify(checking, null, 2)}</code> -->
 <!--   <code>{JSON.stringify(swapping, null, 2)}</code> -->
 <!-- </pre> -->
-<!-- disabled={topNumber > 500 || topNumber <= 0 || sorting || duration < 10 || numElements > 2000} -->
 <div class="flex w-screen items-center justify-around gap-8 px-4 py-2">
   <button
+    disabled={topNumber > 500 || topNumber <= 0 || sorting || duration < 10 || numElements > 2000}
     class="w-full cursor-pointer rounded-sm border bg-amber-200 px-4 py-1 font-bold uppercase disabled:cursor-default disabled:bg-transparent"
     onclick={async function () {
-      if (sorting) {
-        sorting = false;
-        queue.clear();
-        clearQueue();
-        checking = [-1, -1];
-        swapping = false;
-        return;
-      }
-
       original = [...dati];
       sorting = true;
       switch (algorithm) {
@@ -215,7 +207,7 @@
       await visualizeQuee();
     }}
   >
-    {sorting ? "Stop" : "Sort"}
+    Sort
   </button>
   <button
     class="w-full cursor-pointer rounded-sm border bg-red-300 px-4 py-1 text-sm font-bold uppercase disabled:cursor-default disabled:opacity-40"
@@ -236,11 +228,11 @@
     Unsort
   </button>
   <label class="min-w-64">
-    <p class="flex items-center justify-between px-2">
+    <p class="flex justify-between px-2">
       <span class="font-bold"> Number of elements: </span>
       <input
         type="number"
-        class="number_none col-span-3 w-[30%] border-none text-end align-text-bottom"
+        class="col-span-3 w-[30%] border-none pr-2 text-end align-text-bottom"
         bind:value={numElements}
         onkeydown={(e) => console.log(e)}
       />
@@ -250,7 +242,7 @@
       min="5"
       max="2000"
       step="5"
-      class="w-full cursor-pointer bg-transparent"
+      class="w-full cursor-pointer"
       bind:value={
         () => numElements,
         (v) => {
@@ -269,7 +261,7 @@
           duration = v;
         }
       }
-      class="number_none max-w-[40%] border-none px-2 py-1 text-end"
+      class=" max-w-[40%] [appearance:textfield] border-none px-2 py-1 text-end [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       type="number"
       min="1"
       step="5"
@@ -286,7 +278,7 @@
           topNumber = v;
         }
       }
-      class="number_none max-w-[80%] border-none px-2 py-1 text-end"
+      class="max-w-[40%] [appearance:textfield] border-none px-2 py-1 text-end [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       type="number"
       min="10"
       step="5"
@@ -302,7 +294,7 @@
   <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
 </div>
 
-<svg bind:this={svgElement} viewBox="0 0 {innerWidth} {innerHeight - svgHeight}">
+<svg bind:this={svgElement} viewBox="0 0 {innerWidth} {svgHeight}">
   {#each dati as rettangolo, index}
     {@const width = innerWidth! / numElements}
     {@const height = (svgHeight / 100) * Math.floor((rettangolo / biggest) * 100)}
