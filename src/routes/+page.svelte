@@ -29,7 +29,7 @@
   let queueTimeouts: NodeJS.Timeout[] = $state([]);
 
   const randomArray = (numEl: number) =>
-    [...new Array(numEl)].map(() => const {
+    [...new Array(numEl)].map(() => {
       const num = Math.max(Math.round(Math.random() * 199999999) % topNumber, 1);
       if (biggest < num) {
         biggest = num;
@@ -112,7 +112,6 @@
             checking = [index_a, index_b];
 
             const swappingClear = setTimeout(() => {
-              steps++;
               const temp = dati[index_a];
               dati[index_a] = dati[index_b];
               dati[index_b] = temp;
@@ -126,7 +125,6 @@
             break;
           case "SUBSTITUTION":
             const subsClear = setTimeout(() => {
-              steps++;
               if (index_a === undefined) return;
               dati[index_a] = value_a;
             }, duration * 0.2);
@@ -151,10 +149,47 @@
     queueTimeouts.push(finalReset);
 
     const finalTime = Intl.DateTimeFormat("en-US", {
-        minute: "2-digit",
-        second: "2-digit",
-      }).format(new Date(duration * i));
-    
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(new Date(duration * i));
+
+    let openRequest = indexedDB.open("store", 1);
+
+    openRequest.onupgradeneeded = () => {
+      console.log("Upgrade is needed");
+      let db = openRequest.result;
+      if (!db.objectStoreNames.contains("sorting")) {
+        db.createObjectStore("sorting", { keyPath: "id", autoIncrement: true });
+      }
+    };
+
+    openRequest.onerror = () => {
+      console.error("Error", openRequest.error);
+    };
+    openRequest.onsuccess = () => {
+      let db = openRequest.result;
+
+      let transaction = db.transaction("sorting", "readwrite");
+      let sorts = transaction.objectStore("sorting");
+
+      const Algo = {
+        algoType: algorithm,
+        original: [...original],
+        time: finalTime,
+        steps: i,
+      };
+
+      console.log(Algo);
+
+      let request = sorts.add(Algo);
+      request.onsuccess = () => {
+        console.log("Algo added", request.result);
+      };
+
+      request.onerror = () => {
+        console.error("Error", request.error);
+      };
+    };
 
     return () => {
       clearQueue();
