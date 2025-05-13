@@ -6,11 +6,15 @@
   import { quickSort } from "$lib/algo/QuickSort";
   import { insertionSort } from "$lib/algo/Insertionsort";
 
-  let numElements = $state(50);
   let topNumber = $state(500);
   let duration = $state(10); //ms
 
-  let algorithm: Algorithms = $state("QUICK");
+  const maxNumElements = 300;
+  let numElements = $state(maxNumElements);
+
+  let algorithm: Algorithms = $state(
+    (localStorage.getItem("ALGO") as Algorithms) ?? ("BUBBLE" as Algorithms),
+  );
 
   let innerHeight: number = $state(0);
   let innerWidth: number = $state(0);
@@ -20,10 +24,12 @@
   let biggest = $state(0);
   let steps = $state(0);
 
+  let timeSorting = $state(0);
+
   let queueTimeouts: NodeJS.Timeout[] = $state([]);
 
   const randomArray = (numEl: number) =>
-    [...new Array(numEl)].map(() => {
+    [...new Array(numEl)].map(() => const {
       const num = Math.max(Math.round(Math.random() * 199999999) % topNumber, 1);
       if (biggest < num) {
         biggest = num;
@@ -35,6 +41,7 @@
     const arr = randomArray(numElements);
     original = arr;
     dati = arr;
+    timeSorting = 0;
   });
 
   let dati = $state<number[]>([1]);
@@ -63,6 +70,7 @@
     original = [];
     checking = [-1, -1];
     swapping = false;
+    timeSorting = 0;
 
     clearQueue();
 
@@ -74,6 +82,10 @@
   async function visualizeQuee() {
     steps = 0;
     const working = queue.visual();
+
+    const durationInterval = setInterval(() => {
+      timeSorting++;
+    }, 1000);
 
     let el = working.pop();
     let i = 1;
@@ -132,13 +144,21 @@
         sorting = false;
         checking = [-1, -1];
         clearQueue();
+        clearInterval(durationInterval);
       },
       duration * i + 2,
     );
     queueTimeouts.push(finalReset);
 
+    const finalTime = Intl.DateTimeFormat("en-US", {
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(duration * i));
+    
+
     return () => {
       clearQueue();
+      clearInterval(durationInterval);
     };
   }
 
@@ -173,6 +193,26 @@
       oscillator.stop();
     };
   }
+
+  async function handleSorting() {
+    original = [...dati];
+    sorting = true;
+    switch (algorithm) {
+      case "BUBBLE":
+        await bubbleSort([...dati]);
+        break;
+      case "MERGE":
+        await mergeSort([...dati], 0, dati.length);
+        break;
+      case "QUICK":
+        await quickSort([...dati]);
+        break;
+      case "INSERTION":
+        await insertionSort([...dati]);
+        break;
+    }
+    await visualizeQuee();
+  }
 </script>
 
 <svelte:window bind:innerWidth={innerWidth} bind:innerHeight={innerHeight} />
@@ -186,33 +226,17 @@
 <div class="flex w-screen items-center justify-around gap-8 px-4 py-2">
   <button
     class="w-full cursor-pointer rounded-sm border bg-amber-200 px-4 py-1 font-bold uppercase disabled:cursor-default disabled:bg-transparent"
-    onclick={async function () {
+    onclick={() => {
       if (sorting) {
         sorting = false;
+        timeSorting = 0;
         queue.clear();
         clearQueue();
         checking = [-1, -1];
         swapping = false;
         return;
       }
-
-      original = [...dati];
-      sorting = true;
-      switch (algorithm) {
-        case "BUBBLE":
-          await bubbleSort([...dati]);
-          break;
-        case "MERGE":
-          await mergeSort([...dati], 0, dati.length);
-          break;
-        case "QUICK":
-          await quickSort([...dati]);
-          break;
-        case "INSERTION":
-          await insertionSort([...dati]);
-          break;
-      }
-      await visualizeQuee();
+      handleSorting();
     }}
   >
     {sorting ? "Stop" : "Sort"}
@@ -231,24 +255,24 @@
       swapping = false;
       checking = [-1, -1];
       sorting = false;
+      timeSorting = 0;
     }}
   >
     Unsort
   </button>
-  <label class="min-w-64">
-    <p class="flex items-center justify-between px-2">
-      <span class="font-bold"> Number of elements: </span>
+  <label class="min-w-32">
+    <p class="flex items-center justify-between">
+      <span class="font-bold">Elements: </span>
       <input
         type="number"
-        class="number_none col-span-3 w-[30%] border-none text-end align-text-bottom"
+        class="number_none col-span-3 mx-1 w-[30%] border-none px-1 text-end align-text-bottom"
         bind:value={numElements}
-        onkeydown={(e) => console.log(e)}
       />
     </p>
     <input
       type="range"
       min="5"
-      max="2000"
+      max={maxNumElements}
       step="5"
       class="w-full cursor-pointer bg-transparent"
       bind:value={
@@ -293,16 +317,34 @@
       max="500"
     />
   </label>
-  <select bind:value={algorithm} class="cursor-pointer [&_*]:text-yellow-600">
+  <select
+    bind:value={
+      () => algorithm,
+      (value) => {
+        localStorage.setItem("ALGO", value);
+        algorithm = value;
+      }
+    }
+    class="cursor-pointer [&_*]:text-yellow-600"
+  >
     <option value="BUBBLE">Bubblesort </option>
     <option value="MERGE">Mergesort </option>
     <option value="QUICK">Quicksort </option>
     <option value="INSERTION">Insertionsort </option>
   </select>
   <p class="flex gap-2">Steps: <span class="max-w-fit font-bold tabular-nums">{steps}</span></p>
+  <p class="flex gap-2">
+    <span> Time: </span>
+    <span>
+      {Intl.DateTimeFormat("en-US", {
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(timeSorting * 1000))}
+    </span>
+  </p>
 </div>
 
-<svg bind:this={svgElement} viewBox="0 0 {innerWidth} {svgHeight}">
+<svg bind:this={svgElement} width={innerWidth} height={svgHeight} viewBox="">
   {#each dati as rettangolo, index}
     {@const width = innerWidth! / numElements}
     {@const height = (svgHeight / 100) * Math.floor((rettangolo / biggest) * 100)}
